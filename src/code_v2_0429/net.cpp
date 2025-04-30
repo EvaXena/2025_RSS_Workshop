@@ -65,7 +65,7 @@ Mat Net::initweight_and_bias()
 
 
 //init conv_kernel
-void Net::initConvkernel(Convk kernel,int kernel_size,int i_ch,int o_ch)
+void Net::initConvkernel(Convk& kernel,int kernel_size,int i_ch,int o_ch)
 {
 	kernel.resize(o_ch);
 	for(int i = 0;i < o_ch;i++)
