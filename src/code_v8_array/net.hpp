@@ -14,6 +14,15 @@
 #define CF ap_fixed<W,I>
 #define CFL ap_fixed<(2*W),(2*I)>
 
+#define I_W 256
+#define I_H 256
+#define K_3 3
+#define K_1 1
+#define P_1 true
+#define P_2 false
+#define S_1 1
+#define S_2 2
+
 // 预定义网络参数（示例值，需根据实际模型确定）
 constexpr size_t I_CH = 3;    // 输入通道
 constexpr size_t I_H = 256;   // 输入高度
@@ -64,24 +73,128 @@ public:
         {136,384,6,1}
     }};
 
-    // 成员函数调整示例
-    template<size_t OC, size_t IC, size_t K>
-    void initConvK(ConvK<OC, IC, K>& kernel) {
-        // 初始化逻辑（需调整RND_MAT_NT以支持array）
-        for(auto& och : kernel) {
-            for(auto& ich : och) {
-                fpa.RND_MAT_NT(ich); // 假设已适配array版本
-            }
-        }
-    }
 
-    template<size_t C, size_t H, size_t W>
-    Tri<C, H, W> compute_conv_layer(const Tri<C, H, W>& input) {
-        // 计算逻辑（需调整CONV_2D_NT以支持array）
-        Tri<C, H, W> output;
-        // ... 卷积操作
-        return output;
-    }
+	//
+	//每个3x3卷积模块/efficient-net让特征图尺寸减半
+		//efficient-net-1 kernels
+		Convk<T,3*expand,3,kernel_size_1x1,kernel_size_1x1> kernel_e1_1;
+		Convk<T,3*expand,3*expand,kernel_size_3x3,kernel_size_3x3> kernel_e1_2;
+		Convk<T,32,3*expand,kernel_size_1x1,kernel_size_1x1> kernel_e1_3;
+		Bias<T,32> bias_e1_1;
+		Bias<T,32> bias_e1_2;
+		Bias<T,32> bias_e1_3;
+		//efficient-net-2 kernels
+		Convk<T,32*expand,32,kernel_size_1x1,kernel_size_1x1> kernel_e2_1;
+		Convk<T,32*expand,32*expand,kernel_size_3x3,kernel_size_3x3> kernel_e2_2;
+		Convk<T,48,32*expand,kernel_size_1x1,kernel_size_1x1> kernel_e2_3;
+		Bias<T,48> bias_e2_1;
+		Bias<T,48> bias_e2_2;
+		Bias<T,48> bias_e2_3;
+		//efficient-net-3 kernels
+		Convk<T,48*expand,48,kernel_size_1x1,kernel_size_1x1> kernel_e3_1;
+		Convk<T,48*expand,48*expand,kernel_size_3x3,kernel_size_3x3> kernel_e3_2;
+		Convk<T,136,48*expand,kernel_size_1x1,kernel_size_1x1> kernel_e3_3;
+		Bias<T,136> bias_e3_1;
+		Bias<T,136> bias_e3_2;
+		Bias<T,136> bias_e3_3;
+		//efficient-net-4 kernels
+		Convk<T,136*expand,136,kernel_size_1x1,kernel_size_1x1> kernel_e4_1;
+		Convk<T,136*expand,136*expand,kernel_size_3x3,kernel_size_3x3> kernel_e4_2;
+		Convk<T,384,136*expand,kernel_size_1x1,kernel_size_1x1> kernel_e4_3;
+		Bias<T,384> bias_e4_1;
+		Bias<T,384> bias_e4_2;
+		Bias<T,384> bias_e4_3;
+		
+		//encoder_conv不降低特征图尺寸
+		//encoder kernel
+		Convk<T,64,32,kernel_size_3x3,kernel_size_3x3> kernel_en_conv_1;
+		Bias<T,64> bias_en_conv_1;
+		Convk<T,128,48,kernel_size_3x3,kernel_size_3x3> kernel_en_conv_2;
+		Bias<T,128> bias_en_conv_2;
+		Convk<T,256,136,kernel_size_3x3,kernel_size_3x3> kernel_en_conv_3;
+		Bias<T,256> bias_en_conv_3;
+		Convk<T,512,384,kernel_size_3x3,kernel_size_3x3> kernel_en_conv_4;
+		Bias<T,512> bias_en_conv_4;
+		
+		//fusion_conv kernel
+		Convk<T,64,64,kernel_size_3x3,kernel_size_3x3> kernel_fusion1_res_1_conv1;
+		Bias<T,64> bias_fusion1_res_1_conv1;
+		Convk<T,64,64,kernel_size_3x3,kernel_size_3x3> kernel_fusion1_res_1_conv2;
+		Bias<T,64> bias_fusion1_res_1_conv2;
+		Convk<T,64,64,kernel_size_3x3,kernel_size_3x3> kernel_fusion1_res_2_conv1;
+		Bias<T,64> bias_fusion1_res_2_conv1;
+		Convk<T,64,64,kernel_size_3x3,kernel_size_3x3> kernel_fusion1_res_2_conv2;
+		Bias<T,64> bias_fusion1_res_2_conv2;
+		Convk<T,64,64,kernel_size_3x3,kernel_size_3x3> kernel_fusion1_conv3;
+		Bias<T,64> bias_fusion1_conv3;
+		
+		Convk<T,128,128,kernel_size_3x3,kernel_size_3x3> kernel_fusion2_res_1_conv1;
+		Bias<T,128> bias_fusion2_res_1_conv1;
+		Convk<T,128,128,kernel_size_3x3,kernel_size_3x3> kernel_fusion2_res_1_conv2;
+		Bias<T,128> bias_fusion2_res_1_conv2;
+		Convk<T,128,128,kernel_size_3x3,kernel_size_3x3> kernel_fusion2_res_2_conv1;
+		Bias<T,128> bias_fusion2_res_2_conv1;
+		Convk<T,128,128,kernel_size_3x3,kernel_size_3x3> kernel_fusion2_res_2_conv2;
+		Bias<T,128> bias_fusion2_res_2_conv2;
+		Convk<T,64,128,kernel_size_3x3,kernel_size_3x3> kernel_fusion2_conv3;
+		Bias<T,64> bias_fusion2_conv3;
+		
+		Convk<T,256,256,kernel_size_3x3,kernel_size_3x3> kernel_fusion3_res_1_conv1;
+		Bias<T,256> bias_fusion3_res_1_conv1;
+		Convk<T,256,256,kernel_size_3x3,kernel_size_3x3> kernel_fusion3_res_1_conv2;
+		Bias<T,256> bias_fusion3_res_1_conv2;
+		Convk<T,256,256,kernel_size_3x3,kernel_size_3x3> kernel_fusion3_res_2_conv1;
+		Bias<T,256> bias_fusion3_res_2_conv1;
+		Convk<T,256,256,kernel_size_3x3,kernel_size_3x3> kernel_fusion3_res_2_conv2;
+		Bias<T,256> bias_fusion3_res_2_conv2;
+		Convk<T,128,256,kernel_size_3x3,kernel_size_3x3> kernel_fusion3_conv3;
+		Bias<T,128> bias_fusion3_conv3;
+		
+		Convk<T,512,512,kernel_size_3x3,kernel_size_3x3> kernel_fusion4_res_1_conv1;
+		Bias<T,512> bias_fusion4_res_1_conv1;
+		Convk<T,512,512,kernel_size_3x3,kernel_size_3x3> kernel_fusion4_res_1_conv2;
+		Bias<T,512> bias_fusion4_res_1_conv2;
+		Convk<T,512,512,kernel_size_3x3,kernel_size_3x3> kernel_fusion4_res_2_conv1;
+		Bias<T,512> bias_fusion4_res_2_conv1;
+		Convk<T,512,512,kernel_size_3x3,kernel_size_3x3> kernel_fusion4_res_2_conv2;
+		Bias<T,512> bias_fusion4_res_2_conv2;
+		Convk<T,512,512,kernel_size_3x3,kernel_size_3x3> kernel_fusion4_conv3;
+		Bias<T,256> bias_fusion4_conv3;
+		
+		//OutputConv kernel
+		Convk<T,32,64,kernel_size_3x3,kernel_size_3x3> outputconv_1;
+		Bias<T,32> bias_outputconv_1;
+		Convk<T,32,32,kernel_size_3x3,kernel_size_3x3> outputconv_2;
+		Bias<T,32> bias_outputconv_2;
+		Convk<T,1,32,kernel_size_3x3,kernel_size_3x3> outputconv_3;
+		Bias<T,1> bias_outputconv_3;
+		/////////////////////////////////////////////////////////////
+		/////////////////////////////////////////////////////////////
+		/////////////////////////////////////////////////////////////
+		//input buffer
+		Tri<T,3,256,256> inputbuffer;
+		//efficient-net-buffer
+		Tri<T,32,128,128> eff_buf_1;
+		Tri<T,48,64,64> eff_buf_2;
+		Tri<T,136,32,32> eff_buf_3;
+		Tri<T,384,16,16> eff_buf_4;
+		//encoder_conv_buffer
+		Tri<T,64,128,128> encoder_conv_buf_1;
+		Tri<T,128,64,64> encoder_conv_buf_2;
+		Tri<T,256,32,32> encoder_conv_buf_3;
+		Tri<T,512,16,16> encoder_conv_buf_4;
+		//fusion1_buffer
+		Tri<T,64,256,256> fusion1_buf;
+		//fusion2_buffer
+		Tri<T,64,128,128> fusion2_buf;
+		//fusion3_buffer
+		Tri<T,128,64,64> fusion3_buf;
+		//fusion4_buffer
+		Tri<T,256,32,32> fusion4_buf;
+		//OutputConv
+		Tri<T,32,256,256> outputconv_buf_1;
+		Tri<T,32,256,256> outputconv_buf_2;
+		Tri<T,1,256,256> outputconv_buf_3;
 	
 	//void compute_conv_layer(const Tri (&input));
 		
